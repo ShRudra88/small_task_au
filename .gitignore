@@ -1,0 +1,68 @@
+# Miscellaneous
+*.class
+*.log
+*.pyc
+*.swp
+.DS_Store
+.atom/
+.build/
+.buildlog/
+.history
+.svn/
+.swiftpm/
+migrate_working_dir/
+
+# Environment & Secret Files (API Keys, Configs)
+.env
+.env.*
+*.env
+
+# Android Secrets & Local Machine Configuration
+**/android/local.properties
+**/android/key.properties
+*.keystore
+*.jks
+*.p12
+*.pem
+
+# Firebase / Cloud Credentials
+**/android/app/google-services.json
+**/ios/Runner/GoogleService-Info.plist
+
+# IDE & Machine-Specific Configs
+*.iml
+*.ipr
+*.iws
+.idea/
+.vscode/
+
+# FVM (Flutter Version Management)
+.fvm/
+
+# Flutter / Dart / Pub build artifacts
+**/doc/api/
+**/ios/Flutter/.last_build_id
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+/build/
+/coverage/
+
+# iOS / macOS Pods & Symlinks
+**/ios/Pods/
+**/macOS/Pods/
+**/ios/.symlinks/
+
+# Symbolication related
+app.*.symbols
+
+# Obfuscation related
+app.*.map.json
+
+# Android Studio build artifacts
+/android/app/debug
+/android/app/profile
+/android/app/release
