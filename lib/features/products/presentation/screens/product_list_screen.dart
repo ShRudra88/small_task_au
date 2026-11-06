@@ -20,6 +20,15 @@ class ProductListScreen extends StatefulWidget {
 
 class _ProductListScreenState extends State<ProductListScreen> {
   final _scrollController = ScrollController();
+  String _selectedCategory = 'All';
+
+  final List<String> _categories = [
+    'All',
+    'Beauty',
+    'Fragrances',
+    'Furniture',
+    'Groceries',
+  ];
 
   @override
   void initState() {
@@ -52,6 +61,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text('Sign Out'),
         content: const Text('Are you sure you want to sign out?'),
         actions: [
@@ -62,7 +72,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: Theme.of(context).colorScheme.error,
-              minimumSize: const Size(80, 36),
+              minimumSize: const Size(90, 40),
             ),
             onPressed: () {
               Navigator.pop(dialogContext);
@@ -83,23 +93,44 @@ class _ProductListScreenState extends State<ProductListScreen> {
       appBar: AppBar(
         title: BlocBuilder<AuthBloc, AuthState>(
           builder: (context, state) {
-            if (state is Authenticated) {
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('Discover Products'),
-                  Text(
-                    'Hello, ${state.user.firstName} 👋',
+            final firstName = state is Authenticated ? state.user.firstName : 'Explorer';
+            return Row(
+              children: [
+                CircleAvatar(
+                  radius: 18,
+                  backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.15),
+                  child: Text(
+                    firstName.isNotEmpty ? firstName[0].toUpperCase() : 'U',
                     style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.normal,
-                      color: Colors.grey.shade600,
+                      color: theme.colorScheme.primary,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
                     ),
                   ),
-                ],
-              );
-            }
-            return const Text('Discover Products');
+                ),
+                const SizedBox(width: 12),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Hello, $firstName 👋',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      'Explore products',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.normal,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            );
           },
         ),
         actions: [
@@ -110,116 +141,195 @@ class _ProductListScreenState extends State<ProductListScreen> {
           ),
         ],
       ),
-      body: BlocBuilder<ProductListBloc, ProductListState>(
-        builder: (context, state) {
-          if (state is ProductListLoading || state is ProductListInitial) {
-            return const ProductShimmerList();
-          }
-
-          if (state is ProductListError) {
-            return CustomErrorWidget(
-              message: state.message,
-              onRetry: () {
-                context.read<ProductListBloc>().add(const FetchProductsEvent());
+      body: Column(
+        children: [
+          // Horizontal Category Filter Pills
+          Container(
+            height: 52,
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              itemCount: _categories.length,
+              itemBuilder: (context, index) {
+                final category = _categories[index];
+                final isSelected = category == _selectedCategory;
+                return Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: FilterChip(
+                    label: Text(category),
+                    selected: isSelected,
+                    onSelected: (selected) {
+                      setState(() {
+                        _selectedCategory = category;
+                      });
+                    },
+                    selectedColor: theme.colorScheme.primary,
+                    labelStyle: TextStyle(
+                      color: isSelected ? Colors.white : theme.colorScheme.onSurface,
+                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                      fontSize: 13,
+                    ),
+                    backgroundColor: Colors.white,
+                    elevation: isSelected ? 2 : 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                      side: BorderSide(
+                        color: isSelected
+                            ? Colors.transparent
+                            : Colors.grey.shade300,
+                      ),
+                    ),
+                    showCheckmark: false,
+                  ),
+                );
               },
-            );
-          }
+            ),
+          ),
 
-          if (state is ProductListEmpty) {
-            return CustomEmptyWidget(
-              onRefresh: () {
-                context.read<ProductListBloc>().add(const FetchProductsEvent());
-              },
-            );
-          }
+          // Main Product List Content
+          Expanded(
+            child: BlocBuilder<ProductListBloc, ProductListState>(
+              builder: (context, state) {
+                if (state is ProductListLoading || state is ProductListInitial) {
+                  return const ProductShimmerList();
+                }
 
-          if (state is ProductListLoaded) {
-            final products = state.products;
+                if (state is ProductListError) {
+                  return CustomErrorWidget(
+                    message: state.message,
+                    onRetry: () {
+                      context
+                          .read<ProductListBloc>()
+                          .add(const FetchProductsEvent());
+                    },
+                  );
+                }
 
-            return RefreshIndicator(
-              onRefresh: () async {
-                context.read<ProductListBloc>().add(const RefreshProductsEvent());
-              },
-              child: ListView.builder(
-                controller: _scrollController,
-                padding: const EdgeInsets.all(16),
-                itemCount: products.length + 1,
-                itemBuilder: (context, index) {
-                  if (index < products.length) {
-                    final product = products[index];
-                    return ProductCard(
-                      product: product,
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => ProductDetailScreen(
-                              productId: product.id,
-                              initialProduct: product,
-                            ),
-                          ),
-                        );
+                if (state is ProductListEmpty) {
+                  return CustomEmptyWidget(
+                    onRefresh: () {
+                      context
+                          .read<ProductListBloc>()
+                          .add(const FetchProductsEvent());
+                    },
+                  );
+                }
+
+                if (state is ProductListLoaded) {
+                  final filteredProducts = _selectedCategory == 'All'
+                      ? state.products
+                      : state.products
+                          .where((p) =>
+                              p.category.toLowerCase() ==
+                              _selectedCategory.toLowerCase())
+                          .toList();
+
+                  if (filteredProducts.isEmpty && _selectedCategory != 'All') {
+                    return CustomEmptyWidget(
+                      title: 'No $_selectedCategory Products',
+                      subtitle: 'Try selecting a different category or refresh.',
+                      onRefresh: () {
+                        setState(() {
+                          _selectedCategory = 'All';
+                        });
                       },
                     );
                   }
 
-                  // Pagination Footer
-                  if (state.isLoadingMore) {
-                    return const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 24.0),
-                      child: Center(
-                        child: CircularProgressIndicator(),
+                  return RefreshIndicator(
+                    color: theme.colorScheme.primary,
+                    onRefresh: () async {
+                      context
+                          .read<ProductListBloc>()
+                          .add(const RefreshProductsEvent());
+                    },
+                    child: ListView.builder(
+                      controller: _scrollController,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
                       ),
-                    );
-                  }
-
-                  if (state.loadMoreError != null) {
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 16.0),
-                      child: Column(
-                        children: [
-                          Text(
-                            'Failed to load more products',
-                            style: TextStyle(color: theme.colorScheme.error),
-                          ),
-                          const SizedBox(height: 8),
-                          OutlinedButton.icon(
-                            onPressed: () {
-                              context
-                                  .read<ProductListBloc>()
-                                  .add(const LoadMoreProductsEvent());
+                      itemCount: filteredProducts.length + 1,
+                      itemBuilder: (context, index) {
+                        if (index < filteredProducts.length) {
+                          final product = filteredProducts[index];
+                          return ProductCard(
+                            product: product,
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => ProductDetailScreen(
+                                    productId: product.id,
+                                    initialProduct: product,
+                                  ),
+                                ),
+                              );
                             },
-                            icon: const Icon(Icons.refresh, size: 16),
-                            label: const Text('Retry Loading More'),
-                          ),
-                        ],
-                      ),
-                    );
-                  }
+                          );
+                        }
 
-                  if (state.hasReachedMax) {
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 24.0),
-                      child: Center(
-                        child: Text(
-                          'You\'ve reached the end of the list (${state.total} products)',
-                          style: TextStyle(
-                            color: Colors.grey.shade500,
-                            fontSize: 13,
-                          ),
-                        ),
-                      ),
-                    );
-                  }
+                        // Pagination Footer
+                        if (state.isLoadingMore) {
+                          return const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 24.0),
+                            child: Center(
+                              child: CircularProgressIndicator(),
+                            ),
+                          );
+                        }
 
-                  return const SizedBox.shrink();
-                },
-              ),
-            );
-          }
+                        if (state.loadMoreError != null) {
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 16.0),
+                            child: Column(
+                              children: [
+                                Text(
+                                  'Failed to load more products',
+                                  style: TextStyle(color: theme.colorScheme.error),
+                                ),
+                                const SizedBox(height: 8),
+                                OutlinedButton.icon(
+                                  onPressed: () {
+                                    context
+                                        .read<ProductListBloc>()
+                                        .add(const LoadMoreProductsEvent());
+                                  },
+                                  icon: const Icon(Icons.refresh, size: 16),
+                                  label: const Text('Retry Loading More'),
+                                ),
+                              ],
+                            ),
+                          );
+                        }
 
-          return const SizedBox.shrink();
-        },
+                        if (state.hasReachedMax) {
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 24.0),
+                            child: Center(
+                              child: Text(
+                                'You\'ve reached the end of the list (${state.total} products)',
+                                style: TextStyle(
+                                  color: Colors.grey.shade500,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ),
+                          );
+                        }
+
+                        return const SizedBox.shrink();
+                      },
+                    ),
+                  );
+                }
+
+                return const SizedBox.shrink();
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
